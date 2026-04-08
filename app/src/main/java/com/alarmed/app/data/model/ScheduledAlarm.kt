@@ -3,7 +3,6 @@ package com.alarmed.app.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.time.Instant
 
 /**
  * Represents a scheduled alarm that was derived from a calendar event.
@@ -11,7 +10,8 @@ import java.time.Instant
  * This entity stores the relationship between a calendar event and the
  * specific alarm that should trigger at a calculated time.
  *
- * @see com.alarmed.app.data.model.EventSyncState for sync tracking
+ * The `scheduleHash` provides idempotency - the same event+offset combination
+ * will only create one database record.
  */
 @Entity(
     tableName = "scheduled_alarms",
@@ -46,38 +46,44 @@ data class ScheduledAlarm(
     /** Current status of this alarm */
     val status: AlarmStatus = AlarmStatus.SCHEDULED,
 
+    /** Optional label from the alarm config block */
+    val label: String? = null,
+
     /** When this alarm record was created */
     val createdAtEpochMs: Long = System.currentTimeMillis()
-)
+) {
+
+    companion object {
+        /**
+         * Factory method to create a ScheduledAlarm with proper scheduleHash calculation.
+         * This ensures consistency in how alarms are created across the app.
+         */
+        fun create(
+            calendarEventId: String,
+            eventStartEpochMs: Long,
+            offsetMinutes: Int,
+            label: String? = null,
+            status: AlarmStatus = AlarmStatus.SCHEDULED
+        ): ScheduledAlarm {
+            val triggerTime = eventStartEpochMs + (offsetMinutes * 60 * 1000L)
+            val scheduleHash = "$calendarEventId:$offsetMinutes:$triggerTime"
+            
+            return ScheduledAlarm(
+                calendarEventId = calendarEventId,
+                eventStartEpochMs = eventStartEpochMs,
+                offsetMinutes = offsetMinutes,
+                triggerEpochMs = triggerTime,
+                scheduleHash = scheduleHash,
+                label = label,
+                status = status
+            )
+        }
+    }
+}
 
 /** Status of a scheduled alarm */
 enum class AlarmStatus {
     SCHEDULED,
     FIRED,
     CANCELED
-}
-
-/**
- * Factory method to create a ScheduledAlarm with proper scheduleHash calculation.
- * This ensures consistency in how alarms are created across the app.
- */
-fun ScheduledAlarm.Companion.create(
-    calendarEventId: String,
-    eventStartEpochMs: Long,
-    offsetMinutes: Int,
-    label: String? = null,
-    status: AlarmStatus = AlarmStatus.SCHEDULED
-): ScheduledAlarm {
-    val triggerTime = eventStartEpochMs + (offsetMinutes * 60 * 1000L)
-    val scheduleHash = "$calendarEventId:$offsetMinutes:$triggerTime"
-    
-    return ScheduledAlarm(
-        calendarEventId = calendarEventId,
-        eventStartEpochMs = eventStartEpochMs,
-        offsetMinutes = offsetMinutes,
-        triggerEpochMs = triggerTime,
-        scheduleHash = scheduleHash,
-        label = label,
-        status = status
-    )
 }

@@ -1,9 +1,11 @@
 package com.alarmed.app.data.repository
 
 import com.alarmed.app.data.dao.AlarmDao
+import com.alarmed.app.data.model.AlarmBase
 import com.alarmed.app.data.model.ScheduledAlarm
 import com.alarmed.app.data.model.AlarmConfigParseResult
 import com.alarmed.app.data.model.AlarmStatus
+import com.alarmed.app.work.AlarmScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -23,7 +25,8 @@ import javax.inject.Inject
  */
 class AlarmRepositoryImpl @Inject constructor(
     private val alarmDao: AlarmDao,
-    private val calendarRepository: CalendarRepository
+    private val calendarRepository: CalendarRepository,
+    private val alarmScheduler: AlarmScheduler
 ) : AlarmRepository {
 
     override suspend fun getUpcomingAlarms(afterTime: Long): List<ScheduledAlarm> = withContext(Dispatchers.IO) {
@@ -52,6 +55,8 @@ class AlarmRepositoryImpl @Inject constructor(
     override suspend fun cancelAlarmsForEvent(calendarEventId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             alarmDao.deleteAlarmsForEvent(calendarEventId)
+            // Also cancel any pending WorkManager work for these alarms
+            alarmScheduler.cancelAlarmsForEvent(calendarEventId)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -103,8 +108,10 @@ class AlarmRepositoryImpl @Inject constructor(
                         )
                     }
 
-                    reconcileAlarms(event.id, desiredAlarms)
-                    alarmsCreated += desiredAlarms.size
+                    val reconcileResult = reconcileAlarms(event.id, desiredAlarms)
+                    if (reconcileResult.isSuccess) {
+                        alarmsCreated += desiredAlarms.size
+                    }
                 }
             } catch (e: Exception) {
                 errors.add("Failed to process event ${event.id}: ${e.message}")
@@ -139,6 +146,7 @@ class AlarmRepositoryImpl @Inject constructor(
             // Schedule all desired alarms (DAO handles idempotency via unique constraint)
             desiredAlarms.forEach { alarm ->
                 alarmDao.insertAlarm(alarm)
+                alarmScheduler.scheduleAlarm(alarm)
             }
 
             Result.success(Unit)

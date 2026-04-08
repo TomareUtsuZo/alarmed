@@ -6,7 +6,9 @@ import com.alarmed.app.data.parser.AlarmConfigParser
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.spyk
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,13 +33,13 @@ class CalendarRepositoryTest {
     fun setup() {
         context = mockk(relaxed = true)
         parser = mockk(relaxed = true)
-        repository = CalendarRepositoryImpl(context, parser)
+        repository = spyk(CalendarRepositoryImpl(context, parser))
     }
 
     @Test
     fun `getEventsWithAlarms should return only events with valid alarm configs`() = runTest {
-        // Mock permission check
-        every { repository.hasCalendarPermission() } returns true
+        // Mock permission check using relaxed mock + explicit stubbing
+        coEvery { repository.hasCalendarPermission() } returns true
 
         // Mock calendar query result - this is complex to mock fully, 
         // so we test the parser integration part via a simpler approach
@@ -52,7 +54,7 @@ class CalendarRepositoryTest {
 
     @Test
     fun `getEventsWithAlarms should return empty list when no calendar permission`() = runTest {
-        every { repository.hasCalendarPermission() } returns false
+        coEvery { repository.hasCalendarPermission() } returns false
 
         val result = repository.getEventsWithAlarms(0, 1000)
 
@@ -68,7 +70,7 @@ class CalendarRepositoryTest {
 
     @Test
     fun `updateEventAlarmConfig should respect permissions`() = runTest {
-        every { repository.hasCalendarPermission() } returns false
+        coEvery { repository.hasCalendarPermission() } returns false
 
         val result = repository.updateEventAlarmConfig("123", "@alarmapp:v1\n@alarms:30")
 

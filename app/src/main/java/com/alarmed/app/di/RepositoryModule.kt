@@ -7,6 +7,7 @@ import com.alarmed.app.data.repository.AlarmRepository
 import com.alarmed.app.data.repository.AlarmRepositoryImpl
 import com.alarmed.app.data.repository.CalendarRepository
 import com.alarmed.app.data.repository.CalendarRepositoryImpl
+import com.alarmed.app.work.AlarmScheduler
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,9 +32,10 @@ object RepositoryModule {
     @Singleton
     fun provideAlarmRepository(
         alarmDao: AlarmDao,
-        calendarRepository: CalendarRepository
+        calendarRepository: CalendarRepository,
+        alarmScheduler: AlarmScheduler
     ): AlarmRepository {
-        return AlarmRepositoryImpl(alarmDao, calendarRepository)
+        return AlarmRepositoryImpl(alarmDao, calendarRepository, alarmScheduler)
     }
 
     /**
