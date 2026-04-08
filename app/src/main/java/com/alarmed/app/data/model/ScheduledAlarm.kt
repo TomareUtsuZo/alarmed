@@ -56,3 +56,28 @@ enum class AlarmStatus {
     FIRED,
     CANCELED
 }
+
+/**
+ * Factory method to create a ScheduledAlarm with proper scheduleHash calculation.
+ * This ensures consistency in how alarms are created across the app.
+ */
+fun ScheduledAlarm.Companion.create(
+    calendarEventId: String,
+    eventStartEpochMs: Long,
+    offsetMinutes: Int,
+    label: String? = null,
+    status: AlarmStatus = AlarmStatus.SCHEDULED
+): ScheduledAlarm {
+    val triggerTime = eventStartEpochMs + (offsetMinutes * 60 * 1000L)
+    val scheduleHash = "$calendarEventId:$offsetMinutes:$triggerTime"
+    
+    return ScheduledAlarm(
+        calendarEventId = calendarEventId,
+        eventStartEpochMs = eventStartEpochMs,
+        offsetMinutes = offsetMinutes,
+        triggerEpochMs = triggerTime,
+        scheduleHash = scheduleHash,
+        label = label,
+        status = status
+    )
+}

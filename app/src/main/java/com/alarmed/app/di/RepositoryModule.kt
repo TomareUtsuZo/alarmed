@@ -2,6 +2,7 @@ package com.alarmed.app.di
 
 import android.content.Context
 import com.alarmed.app.data.dao.AlarmDao
+import com.alarmed.app.data.parser.AlarmConfigParser
 import com.alarmed.app.data.repository.AlarmRepository
 import com.alarmed.app.data.repository.AlarmRepositoryImpl
 import com.alarmed.app.data.repository.CalendarRepository
@@ -29,9 +30,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideAlarmRepository(
-        alarmDao: AlarmDao
+        alarmDao: AlarmDao,
+        calendarRepository: CalendarRepository
     ): AlarmRepository {
-        return AlarmRepositoryImpl(alarmDao)
+        return AlarmRepositoryImpl(alarmDao, calendarRepository)
     }
 
     /**
@@ -42,8 +44,9 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideCalendarRepository(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        parser: AlarmConfigParser
     ): CalendarRepository {
-        return CalendarRepositoryImpl(context)
+        return CalendarRepositoryImpl(context, parser)
     }
 }
